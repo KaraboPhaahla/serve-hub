@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Sell Your Body – Services Marketplace</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<!-- Google Font -->
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --pink:#ff2fa4;
+  --purple:#8f2bff;
+  --red:#ff1744;
+  --white:#ffffff;
+  --dark:#0a0014;
+}
+
+*{box-sizing:border-box;}
+
+body{
+  margin:0;
+  font-family:'Orbitron', sans-serif;
+  background:radial-gradient(circle at top,var(--purple),var(--dark));
+  color:white;
+}
+
+/* ===== NEON GLOW ===== */
+.glow{
+  text-shadow:0 0 10px var(--pink),0 0 25px var(--purple);
+}
+
+/* ===== HEADER ===== */
+header{
+  padding:30px;
+  text-align:center;
+}
+header h1{
+  font-size:3rem;
+}
+
+/* ===== NAV ===== */
+nav{
+  display:flex;
+  justify-content:center;
+  gap:20px;
+  flex-wrap:wrap;
+}
+nav button{
+  background:transparent;
+  border:2px solid var(--pink);
+  color:white;
+  padding:10px 20px;
+  cursor:pointer;
+  border-radius:30px;
+  transition:0.3s;
+}
+nav button:hover{
+  background:var(--pink);
+  box-shadow:0 0 20px var(--pink);
+}
+
+/* ===== SECTION ===== */
+section{
+  padding:40px 20px;
+  display:none;
+}
+section.active{display:block;}
+
+/* ===== FILTERS ===== */
+.filters{
+  display:flex;
+  flex-wrap:wrap;
+  gap:15px;
+  justify-content:center;
+  margin-bottom:30px;
+}
+select{
+  padding:10px;
+  background:#150022;
+  color:white;
+  border:1px solid var(--purple);
+}
+
+/* ===== CARDS ===== */
+.grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+  gap:30px;
+}
+
+.card{
+  background:linear-gradient(145deg,#12001f,#1c0033);
+  border-radius:20px;
+  padding:20px;
+  text-align:center;
+  transform-style:preserve-3d;
+  transition:0.4s;
+  box-shadow:0 0 20px rgba(255,47,164,0.3);
+}
+.card:hover{
+  transform:rotateY(10deg) rotateX(5deg) scale(1.05);
+  box-shadow:0 0 40px var(--pink);
+}
+.card img{
+  width:100%;
+  height:180px;
+  object-fit:cover;
+  border-radius:15px;
+  margin-bottom:15px;
+}
+
+/* ===== BUTTON ===== */
+.btn{
+  background:linear-gradient(45deg,var(--pink),var(--purple));
+  border:none;
+  padding:12px 25px;
+  border-radius:25px;
+  color:white;
+  cursor:pointer;
+  margin-top:10px;
+  box-shadow:0 0 20px var(--pink);
+}
+
+/* ===== SUBSCRIPTION ===== */
+.pricing{
+  display:flex;
+  flex-wrap:wrap;
+  gap:30px;
+  justify-content:center;
+}
+.price-card{
+  width:280px;
+  border:2px solid var(--purple);
+  border-radius:20px;
+  padding:25px;
+  box-shadow:0 0 25px var(--purple);
+}
+
+/* ===== EVENTS ===== */
+.event{
+  background:#150022;
+  padding:20px;
+  margin:15px auto;
+  max-width:700px;
+  border-left:5px solid var(--pink);
+}
+
+/* ===== FOOTER ===== */
+footer{
+  text-align:center;
+  padding:30px;
+  opacity:0.7;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <h1 class="glow">SELL YOUR BODY</h1>
+  <p>Adult Services Marketplace • All Genders • All Provinces</p>
+
+  <nav>
+    <button onclick="showSection('market')">Home</button>
+    <button onclick="showSection('subscribe')">Subscribe</button>
+    <button onclick="showSection('events')">Events</button>
+    <button onclick="showSection('sell')">Sell a Service</button>
+  </nav>
+</header>
+
+<!-- ===== MARKETPLACE ===== -->
+<section id="market" class="active">
+  <h2 class="glow">Browse Services</h2>
+
+  <div class="filters">
+    <select id="provinceFilter">
+      <option value="">All Provinces</option>
+      <option>Gauteng</option>
+      <option>Western Cape</option>
+      <option>Eastern Cape</option>
+      <option>KwaZulu-Natal</option>
+      <option>Limpopo</option>
+      <option>Mpumalanga</option>
+      <option>Free State</option>
+      <option>North West</option>
+      <option>Northern Cape</option>
+    </select>
+
+    <select id="genderFilter">
+      <option value="">All Genders</option>
+      <option>Male</option>
+      <option>Female</option>
+      <option>Gay</option>
+      <option>Lesbian</option>
+      <option>Trans</option>
+      <option>Non-binary</option>
+    </select>
+  </div>
+
+  <div class="grid" id="serviceGrid"></div>
+</section>
+
+<!-- ===== SUBSCRIBE ===== -->
+<section id="subscribe">
+  <h2 class="glow">Subscription Plans</h2>
+
+  <div class="pricing">
+    <div class="price-card">
+      <h3>Monthly</h3>
+      <p>Post services</p>
+      <p>Basic visibility</p>
+      <h2>R199</h2>
+      <button class="btn">Subscribe</button>
+    </div>
+
+    <div class="price-card">
+      <h3>Yearly ⭐</h3>
+      <p>Highlighted profile</p>
+      <p>Event priority</p>
+      <p><strong>Special offers</strong></p>
+      <h2>R1999</h2>
+      <button class="btn">Best Deal</button>
+    </div>
+  </div>
+</section>
+
+<!-- ===== EVENTS ===== -->
+<section id="events">
+  <h2 class="glow">Upcoming Events</h2>
+
+  <div class="event">
+    <h3>Neon Night Showcase</h3>
+    <p>Johannesburg • Adults Only</p>
+  </div>
+
+  <div class="event">
+    <h3>VIP Services Expo</h3>
+    <p>Cape Town • Invite Only</p>
+  </div>
+</section>
+
+<!-- ===== SELL ===== -->
+<section id="sell">
+  <h2 class="glow">Post Your Service</h2>
+
+  <p>Subscribers can create profiles, upload images, and list services.</p>
+  <button class="btn">Login / Subscribe</button>
+</section>
+
+<footer>
+  <p>Adults Only • Legal Services Marketplace</p>
+</footer>
+
+<script>
+const services=[
+  {
+    name:"Alex",
+    service:"Personal Trainer",
+    province:"Gauteng",
+    gender:"Male",
+    img:"https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e"
+  },
+  {
+    name:"Luna",
+    service:"Dance Performer",
+    province:"Western Cape",
+    gender:"Lesbian",
+    img:"https://images.unsplash.com/photo-1494790108377-be9c29b29330"
+  },
+  {
+    name:"Kai",
+    service:"Massage Therapy",
+    province:"KwaZulu-Natal",
+    gender:"Non-binary",
+    img:"https://images.unsplash.com/photo-1535713875002-d1d0cf377fde"
+  }
+];
+
+const grid=document.getElementById("serviceGrid");
+
+function render(){
+  const p=document.getElementById("provinceFilter").value;
+  const g=document.getElementById("genderFilter").value;
+  grid.innerHTML="";
+  services.filter(s=>(!p||s.province===p)&&(!g||s.gender===g))
+  .forEach(s=>{
+    grid.innerHTML+=`
+    <div class="card">
+      <img src="${s.img}">
+      <h3>${s.name}</h3>
+      <p>${s.service}</p>
+      <p>${s.gender} • ${s.province}</p>
+      <button class="btn">View Profile</button>
+    </div>`;
+  });
+}
+
+document.querySelectorAll("select").forEach(s=>s.onchange=render);
+render();
+
+function showSection(id){
+  document.querySelectorAll("section").forEach(s=>s.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+}
+</script>
+
+</body>
+</html>
