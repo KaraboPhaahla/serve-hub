@@ -30,8 +30,16 @@ body{
 .glow{
   text-shadow:0 0 10px var(--pink),0 0 25px var(--purple);
 }
+/* ===== HOMEBUTTON ===== */
+.home-btn{
+  cursor:pointer;
+  transition:0.3s;
+}
 
-/* ===== HEADER ===== */
+.home-btn:hover{
+  transform:scale(1.05);
+  text-shadow:0 0 20px var(--pink), 0 0 40px var(--purple);
+}
 /* ===== HERO HEADER (3D BACKGROUND) ===== */
 header{
   position:relative;
@@ -228,7 +236,7 @@ footer{
   <div class="header-overlay"></div>
 
   <!-- Content -->
-  <h1 class="glow">SERVE-HUB</h1>
+  <h1 class="glow home-btn" onclick="goHome()">SERVE-HUB</h1>
   <p>Adult Services Marketplace • All Genders • All Provinces</p>
 
   <nav>
@@ -383,6 +391,18 @@ document.addEventListener("mousemove", e=>{
   document.querySelector(".header-bg").style.transform =
     `translate(${x}px, ${y}px) scale(1.05)`;
 });
+</script>
+
+<script>
+function goHome(){
+  showSection('market');  // goes to home section
+
+  // optional: scroll to top
+  window.scrollTo({
+    top: 0,
+    behavior: "smooth"
+  });
+}
 </script>
 
 </body>
