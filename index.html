@@ -245,8 +245,21 @@ footer{
     <button onclick="showSection('events')">Events</button>
     <button onclick="showSection('sell')">Sell a Service</button>
   </nav>
-
+  
 </header>
+
+<section id="login">
+  <h2 class="glow">Login / Register</h2>
+
+  <input type="email" id="email" placeholder="Email"><br><br>
+  <input type="password" id="password" placeholder="Password"><br><br>
+
+  <button class="btn" onclick="register()">Register</button>
+  <button class="btn" onclick="login()">Login</button>
+
+  <p id="loginMsg"></p>
+</section>
+
 <!-- ===== MARKETPLACE ===== -->
 <section id="market" class="active">
   <h2 class="glow">Browse Services</h2>
@@ -289,7 +302,7 @@ footer{
       <p>Post services</p>
       <p>Basic visibility</p>
       <h2>R199</h2>
-      <button class="btn">Subscribe</button>
+      <button class="btn" onclick="subscribe('monthly')">Subscribe</button>
     </div>
 
     <div class="price-card">
@@ -298,7 +311,7 @@ footer{
       <p>Event priority</p>
       <p><strong>Special offers</strong></p>
       <h2>R1999</h2>
-      <button class="btn">Best Deal</button>
+      <button class="btn" onclick="subscribe('yearly')">Best Deal</button>
     </div>
   </div>
 </section>
@@ -322,20 +335,216 @@ footer{
 <section id="sell">
   <h2 class="glow">Post Your Service</h2>
 
-  <p>Subscribers can create profiles, upload images, and list services.</p>
-  <button class="btn">Login / Subscribe</button>
+  <input type="text" id="sellerName" placeholder="Your Name"><br><br>
+  <input type="text" id="sellerService" placeholder="Service (e.g Massage)"><br><br>
+
+  <select id="sellerProvince">
+    <option>Gauteng</option>
+      <option>Western Cape</option>
+      <option>Eastern Cape</option>
+      <option>KwaZulu-Natal</option>
+      <option>Limpopo</option>
+      <option>Mpumalanga</option>
+      <option>Free State</option>
+      <option>North West</option>
+      <option>Northern Cape</option>
+  </select><br><br>
+
+  <select id="sellerGender">
+    <option>Male</option>
+    <option>Female</option>
+    <option>Gay</option>
+    <option>Lesbian</option>
+    <option>Trans</option>
+    <option>Non-binary</option>
+  </select><br><br>
+
+  <input type="file" id="sellerImage"><br><br>
+
+  <button class="btn" onclick="postService()">Post Service</button>
+
+  <p id="sellMsg"></p>
+</section>
+
+<section id="payment">
+  <h2 class="glow">Complete Payment</h2>
+
+  <p id="planText"></p>
+
+  <button class="btn" onclick="payWithPaystack()">Pay Now</button>
 </section>
 
 <footer>
   <p>Adults Only • Legal Services Marketplace</p>
 </footer>
 
+<!-- Firebase -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } 
+from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { getFirestore, doc, setDoc, getDoc } 
+from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { collection, getDocs } 
+from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDZrMqbuJOYdEaYyaghF0Npr2hNqBqiWG8",
+  authDomain: "serve-hub-29467.firebaseapp.com",
+  projectId: "serve-hub-29467",
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+// ===== FIXED REGISTER =====
+window.register = async function(){
+  const paid = sessionStorage.getItem("paid");
+
+  if(paid !== "true"){
+    document.getElementById("loginMsg").innerText =
+      "You must subscribe before creating an account.";
+    showSection('subscribe');
+    return;
+  }
+
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+
+  try{
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+
+    await setDoc(doc(db, "users", userCredential.user.uid), {
+      email: email,
+      subscribed: true
+    });
+
+    document.getElementById("loginMsg").innerText = "Account created!";
+    showSection('sell');
+
+  } catch(error){
+    document.getElementById("loginMsg").innerText = error.message;
+  }
+}
+
+// ===== FIXED LOGIN =====
+window.login = async function(){
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+
+  try{
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+
+    const docSnap = await getDoc(doc(db, "users", userCredential.user.uid));
+
+    if(docSnap.exists() && docSnap.data().subscribed){
+      document.getElementById("loginMsg").innerText = "Login successful!";
+      showSection('sell');
+    } else {
+      document.getElementById("loginMsg").innerText = "Not subscribed.";
+    }
+
+  } catch(error){
+    document.getElementById("loginMsg").innerText = error.message;
+  }
+}
+
+//====Post service====
+
+window.postService = async function(){
+
+  const user = auth.currentUser;
+
+  if(!user){
+    document.getElementById("sellMsg").innerText = "You must be logged in.";
+    showSection('login');
+    return;
+  }
+
+  const name = document.getElementById("sellerName").value;
+  const service = document.getElementById("sellerService").value;
+  const province = document.getElementById("sellerProvince").value;
+  const gender = document.getElementById("sellerGender").value;
+
+  const file = document.getElementById("sellerImage").files[0];
+
+  if(!file){
+    document.getElementById("sellMsg").innerText = "Please upload an image.";
+    return;
+  }
+
+  // Convert image to base64 (quick method)
+  const reader = new FileReader();
+
+  reader.onload = async function(){
+    const base64Image = reader.result;
+
+    try{
+      await setDoc(doc(db, "services", Date.now().toString()), {
+        name,
+        service,
+        province,
+        gender,
+        img: base64Image
+      });
+
+      document.getElementById("sellMsg").innerText = "Service posted!";
+
+      loadServices(); // refresh marketplace
+
+      showSection('market');
+
+    }catch(err){
+      document.getElementById("sellMsg").innerText = err.message;
+    }
+  }
+
+  reader.readAsDataURL(file);
+}
+
+//=====LoadServices=====
+
+window.loadServices = async function(){
+  grid.innerHTML = "";
+
+  const querySnapshot = await getDocs(collection(db, "services"));
+
+  querySnapshot.forEach((docSnap)=>{
+    const s = docSnap.data();
+
+    grid.innerHTML += `
+      <div class="card">
+        <img src="${s.img}">
+        <h3>${s.name}</h3>
+        <p>${s.service}</p>
+        <p>${s.gender} • ${s.province}</p>
+        <button class="btn">View Profile</button>
+      </div>
+    `;
+  });
+}
+
+// ===== FIXED SELL ACCESS =====
+window.handleSellAccess = function(){
+  const user = auth.currentUser;
+
+  if(user){
+    alert("Welcome back!");
+    showSection('sell');
+  } else {
+    showSection('login');
+  }
+}
+</script>
+
 <script>
 const services=[
-  {
+  { 
     name:"Alex",
     service:"Personal Trainer",
-    province:"Gauteng",
+     province:"Gauteng",
     gender:"Gay",
     img:"gay.jpeg"
   },
@@ -375,7 +584,7 @@ function render(){
 }
 
 document.querySelectorAll("select").forEach(s=>s.onchange=render);
-render();
+loadServices() ;
 
 function showSection(id){
   document.querySelectorAll("section").forEach(s=>s.classList.remove("active"));
@@ -384,7 +593,7 @@ function showSection(id){
 </script>
 
 <script>
-document.addEventListener("", e=>{
+document.addEventListener("mouse", e=>{
   let x = (window.innerWidth / 2 - e.pageX) / 50;
   let y = (window.innerHeight / 2 - e.pageY) / 50;
 
@@ -405,5 +614,155 @@ function goHome(){
 }
 </script>
 
+<script>
+
+function subscribe(plan){
+  localStorage.setItem("selectedPlan", plan);
+
+  // Show payment section instead of redirect
+  showSection('payment');
+
+  // Display selected plan
+  const planText = document.getElementById("planText");
+
+  if(plan === "monthly"){
+    planText.innerText = "Monthly Plan - R199";
+  } else {
+    planText.innerText = "Yearly Plan - R1999";
+  }
+}
+
+</script>
+
+<script>
+function payWithPaystack(){
+  const plan = localStorage.getItem("selectedPlan");
+
+  let amount = 0;
+
+  if(plan === "monthly"){
+    amount = 19900; // Paystack uses cents (R199 = 19900)
+  } else {
+    amount = 199900; // R1999
+  }
+
+  let handler = PaystackPop.setup({
+    key: 'pk_test_xxxxxxxxxxxxxxxxxxxxx', // 🔥 replace with your Paystack PUBLIC key
+    email: "customer@email.com", // later we'll use real user email
+    amount: amount,
+    currency: "ZAR",
+
+        callback: function(response){
+      alert("Payment successful! Ref: " + response.reference);
+
+      // future: verify payment on backend
+      showSection('market');
+    },
+
+    onClose: function(){
+      alert("Payment window closed.");
+    }
+  });
+
+  handler.openIframe();
+}
+</script>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyDZrMqbuJOYdEaYyaghF0Npr2hNqBqiWG8",
+  authDomain: "serve-hub-29467.firebaseapp.com",
+  projectId: "serve-hub-29467",
+  storageBucket: "serve-hub-29467.firebasestorage.app",
+  messagingSenderId: "277822035934",
+  appId: "1:277822035934:web:8498203624b26e7b4cef4f"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+</script>
+
+<script>
+
+function handleSellAccess(){
+  const user = auth.currentUser;
+
+  if(user){
+    alert("Welcome back!");
+    showSection('sell');
+  } else {
+    showSection('login');
+  }
+}
+
+</script>
+
+<script>
+
+async function register(){
+  const paid = sessionStorage.getItem("paid");
+
+  if(paid !== "true"){
+    document.getElementById("loginMsg").innerText =
+      "You must subscribe before creating an account.";
+    showSection('subscribe');
+    return;
+  }
+
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+
+  try{
+    const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+
+    // Save user in Firestore
+    await db.collection("users").doc(userCredential.user.uid).set({
+      email: email,
+      subscribed: true,
+      createdAt: new Date()
+    });
+
+    document.getElementById("loginMsg").innerText =
+      "Account created successfully!";
+
+    showSection('sell');
+
+  } catch(error){
+    document.getElementById("loginMsg").innerText = error.message;
+  }
+}
+</script>
+
+<script>
+async function login(){
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+
+  try{
+    const userCredential = await auth.signInWithEmailAndPassword(email, password);
+
+    // Check subscription from Firestore
+    const doc = await db.collection("users").doc(userCredential.user.uid).get();
+
+    if(doc.exists && doc.data().subscribed){
+      document.getElementById("loginMsg").innerText =
+        "Login successful!";
+      showSection('sell');
+    } else {
+      document.getElementById("loginMsg").innerText =
+        "You are not subscribed.";
+      auth.signOut();
+    }
+
+  } catch(error){
+    document.getElementById("loginMsg").innerText = error.message;
+  }
+}
+</script>
+
+<script src="https://js.paystack.co/v1/inline.js"></script>
+
 </body>
-</html>
+</html>                     
