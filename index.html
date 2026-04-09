@@ -17,6 +17,10 @@
   --dark:#0a0014;
 }
 
+.header-bg{
+  transition: opacity 0.5s ease;
+}
+
 *{box-sizing:border-box;}
 
 body{
@@ -243,7 +247,7 @@ footer{
     <button onclick="showSection('market')">Home</button>
     <button onclick="showSection('subscribe')">Subscribe</button>
     <button onclick="showSection('events')">Events</button>
-    <button onclick="showSection('sell')">Sell a Service</button>
+    <button onclick="handleSellAccess()">Sell a Service</button> 
   </nav>
   
 </header>
@@ -361,10 +365,38 @@ footer{
 
   <input type="file" id="sellerImage"><br><br>
 
-  <button class="btn" onclick="postService()">Post Service</button>
 
   <p id="sellMsg"></p>
+  
+  <input type="number" id="sellerAge" placeholder="Age"><br><br>
+
+<textarea id="sellerBio" placeholder="Short Bio"></textarea><br><br>
+
+<input type="text" id="sellerWhatsApp" placeholder="WhatsApp Number (e.g 27831234567)"><br><br>
+
+<button class="btn" onclick="postService()">Post Service</button>
 </section>
+
+<section id="profile">
+  <h2 class="glow">Profile</h2>
+
+  <img id="profileImg" style="width:250px;border-radius:20px;"><br><br>
+
+  <h2 id="profileName"></h2>
+  <p id="profileService"></p>
+
+  <p id="profileDetails"></p>
+  <p id="profileAge"></p>
+
+  <p id="profileBio" style="max-width:500px;margin:auto;"></p>
+
+  <a id="whatsappBtn" target="_blank">
+    <button class="btn">Contact on WhatsApp</button>
+  </a>
+
+  <button class="btn" onclick="showSection('market')">Back</button>
+</section>
+
 
 <section id="payment">
   <h2 class="glow">Complete Payment</h2>
@@ -388,6 +420,7 @@ from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { collection, getDocs } 
 from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
+const ADMIN_EMAIL = "karaboponko@email.com";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDZrMqbuJOYdEaYyaghF0Npr2hNqBqiWG8",
@@ -399,26 +432,66 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
+import { onAuthStateChanged } 
+from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+const ADMIN_PASSWORD = "admin@123"; // choose your password
+
+// AUTO CREATE ADMIN
+async function ensureAdminExists() {
+  try {
+    // Try to get the user by email from Firebase Auth
+    let adminUser = await auth.signInWithEmailAndPassword(ADMIN_EMAIL, ADMIN_PASSWORD).catch(()=>null);
+
+    if(!adminUser) {
+      const userCredential = await createUserWithEmailAndPassword(auth, ADMIN_EMAIL, ADMIN_PASSWORD);
+
+      await setDoc(doc(db, "users", userCredential.user.uid), {
+        email: ADMIN_EMAIL,
+        subscribed: true,
+        role: "admin"
+      });
+
+      console.log("Admin auto-created");
+    } else {
+      const docRef = doc(db, "users", adminUser.user.uid);
+      const docSnap = await getDoc(docRef);
+
+      if(!docSnap.exists()) {
+        await setDoc(docRef, { email: ADMIN_EMAIL, subscribed: true, role: "admin" });
+      }
+    }
+
+  } catch(err) {
+    console.error("Admin creation failed", err);
+  }
+}
+
+ensureAdminExists(); 
+
 // ===== FIXED REGISTER =====
 window.register = async function(){
-  const paid = sessionStorage.getItem("paid");
-
-  if(paid !== "true"){
-    document.getElementById("loginMsg").innerText =
-      "You must subscribe before creating an account.";
-    showSection('subscribe');
-    return;
-  }
 
   const email = document.getElementById("email").value;
   const password = document.getElementById("password").value;
+
+  const paid = sessionStorage.getItem("paid");
+
+// Only block non-admin users if not paid
+if(email !== ADMIN_EMAIL && paid !== "true"){
+  document.getElementById("loginMsg").innerText =
+    "You must subscribe before creating an account.";
+  showSection('subscribe');
+  return;
+}
 
   try{
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
 
     await setDoc(doc(db, "users", userCredential.user.uid), {
       email: email,
-      subscribed: true
+      subscribed: true,
+	  role: email === ADMIN_EMAIL ? "admin" : "user"
     });
 
     document.getElementById("loginMsg").innerText = "Account created!";
@@ -439,12 +512,16 @@ window.login = async function(){
 
     const docSnap = await getDoc(doc(db, "users", userCredential.user.uid));
 
-    if(docSnap.exists() && docSnap.data().subscribed){
-      document.getElementById("loginMsg").innerText = "Login successful!";
-      showSection('sell');
-    } else {
-      document.getElementById("loginMsg").innerText = "Not subscribed.";
-    }
+    if(docSnap.exists()){
+  const userData = docSnap.data();
+
+  if(userData.role === "admin" || userData.subscribed){
+    document.getElementById("loginMsg").innerText = "Login successful!";
+    showSection('sell');
+  } else {
+    document.getElementById("loginMsg").innerText = "Not subscribed.";
+  }
+}
 
   } catch(error){
     document.getElementById("loginMsg").innerText = error.message;
@@ -463,10 +540,30 @@ window.postService = async function(){
     return;
   }
 
+  // 🔥 CHECK SUBSCRIPTION
+  const docSnap = await getDoc(doc(db, "users", user.uid));
+
+  if(!docSnap.exists()){
+    document.getElementById("sellMsg").innerText = "User not found.";
+    return;
+  }
+
+  const userData = docSnap.data();
+
+  if(!userData.subscribed && userData.role !== "admin"){
+    document.getElementById("sellMsg").innerText =
+      "You must subscribe to post services.";
+    showSection('subscribe');
+    return;
+  }
+
   const name = document.getElementById("sellerName").value;
   const service = document.getElementById("sellerService").value;
   const province = document.getElementById("sellerProvince").value;
   const gender = document.getElementById("sellerGender").value;
+  const age = document.getElementById("sellerAge").value;
+  const bio = document.getElementById("sellerBio").value;
+  const whatsapp = document.getElementById("sellerWhatsApp").value;
 
   const file = document.getElementById("sellerImage").files[0];
 
@@ -475,7 +572,6 @@ window.postService = async function(){
     return;
   }
 
-  // Convert image to base64 (quick method)
   const reader = new FileReader();
 
   reader.onload = async function(){
@@ -487,13 +583,14 @@ window.postService = async function(){
         service,
         province,
         gender,
+        age,
+        bio,
+        whatsapp,
         img: base64Image
       });
 
       document.getElementById("sellMsg").innerText = "Service posted!";
-
-      loadServices(); // refresh marketplace
-
+      loadServices();
       showSection('market');
 
     }catch(err){
@@ -504,10 +601,34 @@ window.postService = async function(){
   reader.readAsDataURL(file);
 }
 
+//====view profile======
+window.viewProfile = function(service){
+
+  document.getElementById("profileImg").src = service.img;
+  document.getElementById("profileName").innerText = service.name;
+  document.getElementById("profileService").innerText = service.service;
+
+  document.getElementById("profileDetails").innerText =
+    service.gender + " • " + service.province;
+
+  document.getElementById("profileAge").innerText =
+    "Age: " + (service.age || "N/A");
+
+  document.getElementById("profileBio").innerText =
+    service.bio || "No bio available.";
+
+  // WhatsApp link
+  const whatsappLink = "https://wa.me/" + service.whatsapp;
+  document.getElementById("whatsappBtn").href = whatsappLink;
+
+  showSection('profile');
+} 
+
 //=====LoadServices=====
 
 window.loadServices = async function(){
-  grid.innerHTML = "";
+  const grid = document.getElementById("serviceGrid");
+grid.innerHTML = "";
 
   const querySnapshot = await getDocs(collection(db, "services"));
 
@@ -520,20 +641,45 @@ window.loadServices = async function(){
         <h3>${s.name}</h3>
         <p>${s.service}</p>
         <p>${s.gender} • ${s.province}</p>
-        <button class="btn">View Profile</button>
+        <button class="btn" onclick='viewProfile(${JSON.stringify(s)})'>View Profile</button>
       </div>
     `;
   });
 }
 
 // ===== FIXED SELL ACCESS =====
-window.handleSellAccess = function(){
+window.handleSellAccess = async function(){
+
   const user = auth.currentUser;
 
-  if(user){
-    alert("Welcome back!");
+  // 🔴 NOT LOGGED IN
+  if(!user){
+    showSection('login');
+    return;
+  }
+
+  try{
+    const docSnap = await getDoc(doc(db, "users", user.uid));
+
+    if(!docSnap.exists()){
+      showSection('login');
+      return;
+    }
+
+    const userData = docSnap.data();
+
+    // 🔴 NOT SUBSCRIBED
+    if(!(userData.subscribed || userData.role === "admin")){
+  alert("You must subscribe first.");
+  showSection('subscribe');
+  return;
+}
+
+    // ✅ ACCESS GRANTED
     showSection('sell');
-  } else {
+
+  }catch(err){
+    console.error(err);
     showSection('login');
   }
 }
@@ -593,13 +739,19 @@ function showSection(id){
 </script>
 
 <script>
-document.addEventListener("mouse", e=>{
-  let x = (window.innerWidth / 2 - e.pageX) / 50;
-  let y = (window.innerHeight / 2 - e.pageY) / 50;
+let bgVisible = true;
 
-  document.querySelector(".header-bg").style.transform =
-    `translate(${x}px, ${y}px) scale(1.05)`;
-});
+document.addEventListener("click", () => {
+  const bg = document.querySelector(".header-bg");
+
+  if(bgVisible){
+    bg.style.opacity = "0";   // hide
+  } else {
+    bg.style.opacity = "1";   // show
+  }
+
+  bgVisible = !bgVisible;
+}); 
 </script>
 
 <script>
@@ -637,128 +789,32 @@ function subscribe(plan){
 <script>
 function payWithPaystack(){
   const plan = localStorage.getItem("selectedPlan");
-
-  let amount = 0;
-
-  if(plan === "monthly"){
-    amount = 19900; // Paystack uses cents (R199 = 19900)
-  } else {
-    amount = 199900; // R1999
-  }
+  let amount = plan === "monthly" ? 19900 : 199900;
 
   let handler = PaystackPop.setup({
-    key: 'pk_test_xxxxxxxxxxxxxxxxxxxxx', // 🔥 replace with your Paystack PUBLIC key
-    email: "customer@email.com", // later we'll use real user email
+    key: 'pk_test_xxxxxxxxxxxxxxxxxxxxx', 
+    email: auth.currentUser?.email || "customer@email.com",
     amount: amount,
     currency: "ZAR",
+    callback: async function(response){
+      alert("Payment successful!");
 
-        callback: function(response){
-      alert("Payment successful! Ref: " + response.reference);
+      sessionStorage.setItem("paid", "true");
 
-      // future: verify payment on backend
-      showSection('market');
+      // ✅ Update Firestore subscription
+      if(auth.currentUser){
+        const userRef = doc(db, "users", auth.currentUser.uid);
+        await setDoc(userRef, { subscribed: true }, { merge: true });
+      }
+
+      showSection('login');  
     },
-
     onClose: function(){
       alert("Payment window closed.");
     }
   });
 
   handler.openIframe();
-}
-</script>
-
-<script>
-const firebaseConfig = {
-  apiKey: "AIzaSyDZrMqbuJOYdEaYyaghF0Npr2hNqBqiWG8",
-  authDomain: "serve-hub-29467.firebaseapp.com",
-  projectId: "serve-hub-29467",
-  storageBucket: "serve-hub-29467.firebasestorage.app",
-  messagingSenderId: "277822035934",
-  appId: "1:277822035934:web:8498203624b26e7b4cef4f"
-};
-
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-
-</script>
-
-<script>
-
-function handleSellAccess(){
-  const user = auth.currentUser;
-
-  if(user){
-    alert("Welcome back!");
-    showSection('sell');
-  } else {
-    showSection('login');
-  }
-}
-
-</script>
-
-<script>
-
-async function register(){
-  const paid = sessionStorage.getItem("paid");
-
-  if(paid !== "true"){
-    document.getElementById("loginMsg").innerText =
-      "You must subscribe before creating an account.";
-    showSection('subscribe');
-    return;
-  }
-
-  const email = document.getElementById("email").value;
-  const password = document.getElementById("password").value;
-
-  try{
-    const userCredential = await auth.createUserWithEmailAndPassword(email, password);
-
-    // Save user in Firestore
-    await db.collection("users").doc(userCredential.user.uid).set({
-      email: email,
-      subscribed: true,
-      createdAt: new Date()
-    });
-
-    document.getElementById("loginMsg").innerText =
-      "Account created successfully!";
-
-    showSection('sell');
-
-  } catch(error){
-    document.getElementById("loginMsg").innerText = error.message;
-  }
-}
-</script>
-
-<script>
-async function login(){
-  const email = document.getElementById("email").value;
-  const password = document.getElementById("password").value;
-
-  try{
-    const userCredential = await auth.signInWithEmailAndPassword(email, password);
-
-    // Check subscription from Firestore
-    const doc = await db.collection("users").doc(userCredential.user.uid).get();
-
-    if(doc.exists && doc.data().subscribed){
-      document.getElementById("loginMsg").innerText =
-        "Login successful!";
-      showSection('sell');
-    } else {
-      document.getElementById("loginMsg").innerText =
-        "You are not subscribed.";
-      auth.signOut();
-    }
-
-  } catch(error){
-    document.getElementById("loginMsg").innerText = error.message;
-  }
 }
 </script>
 
