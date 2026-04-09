@@ -438,13 +438,15 @@ from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 const ADMIN_PASSWORD = "admin@123"; // choose your password
 
 // AUTO CREATE ADMIN
-async function ensureAdminExists() {
-  try {
-    // Try to get the user by email from Firebase Auth
-    let adminUser = await auth.signInWithEmailAndPassword(ADMIN_EMAIL, ADMIN_PASSWORD).catch(()=>null);
+onAuthStateChanged(auth, async (user) => {
 
-    if(!adminUser) {
-      const userCredential = await createUserWithEmailAndPassword(auth, ADMIN_EMAIL, ADMIN_PASSWORD);
+  if(!user){
+    try{
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        ADMIN_EMAIL,
+        ADMIN_PASSWORD
+      );
 
       await setDoc(doc(db, "users", userCredential.user.uid), {
         email: ADMIN_EMAIL,
@@ -453,21 +455,13 @@ async function ensureAdminExists() {
       });
 
       console.log("Admin auto-created");
-    } else {
-      const docRef = doc(db, "users", adminUser.user.uid);
-      const docSnap = await getDoc(docRef);
-
-      if(!docSnap.exists()) {
-        await setDoc(docRef, { email: ADMIN_EMAIL, subscribed: true, role: "admin" });
-      }
+    } catch(err){
+      // If already exists, ignore error
+      console.log("Admin already exists");
     }
-
-  } catch(err) {
-    console.error("Admin creation failed", err);
   }
-}
 
-ensureAdminExists(); 
+}); 
 
 // ===== FIXED REGISTER =====
 window.register = async function(){
@@ -477,13 +471,12 @@ window.register = async function(){
 
   const paid = sessionStorage.getItem("paid");
 
-// Only block non-admin users if not paid
-if(email !== ADMIN_EMAIL && paid !== "true"){
-  document.getElementById("loginMsg").innerText =
-    "You must subscribe before creating an account.";
-  showSection('subscribe');
-  return;
-}
+  if(paid !== "true" && email !== ADMIN_EMAIL){
+    document.getElementById("loginMsg").innerText =
+      "You must subscribe before creating an account.";
+    showSection('subscribe');
+    return;
+  }
 
   try{
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -512,16 +505,12 @@ window.login = async function(){
 
     const docSnap = await getDoc(doc(db, "users", userCredential.user.uid));
 
-    if(docSnap.exists()){
-  const userData = docSnap.data();
-
-  if(userData.role === "admin" || userData.subscribed){
-    document.getElementById("loginMsg").innerText = "Login successful!";
-    showSection('sell');
-  } else {
-    document.getElementById("loginMsg").innerText = "Not subscribed.";
-  }
-}
+    if(docSnap.exists() && (docSnap.data().subscribed || email === ADMIN_EMAIL)){
+      document.getElementById("loginMsg").innerText = "Login successful!";
+      showSection('sell');
+    } else {
+      document.getElementById("loginMsg").innerText = "Not subscribed.";
+    }
 
   } catch(error){
     document.getElementById("loginMsg").innerText = error.message;
@@ -669,11 +658,11 @@ window.handleSellAccess = async function(){
     const userData = docSnap.data();
 
     // 🔴 NOT SUBSCRIBED
-    if(!(userData.subscribed || userData.role === "admin")){
-  alert("You must subscribe first.");
-  showSection('subscribe');
-  return;
-}
+    if(!userData.subscribed && userData.role !== "admin"){
+      alert("You must subscribe first.");
+      showSection('subscribe');
+      return;
+    }
 
     // ✅ ACCESS GRANTED
     showSection('sell');
@@ -789,26 +778,29 @@ function subscribe(plan){
 <script>
 function payWithPaystack(){
   const plan = localStorage.getItem("selectedPlan");
-  let amount = plan === "monthly" ? 19900 : 199900;
+
+  let amount = 0;
+
+  if(plan === "monthly"){
+    amount = 19900; // Paystack uses cents (R199 = 19900)
+  } else {
+    amount = 199900; // R1999
+  }
 
   let handler = PaystackPop.setup({
-    key: 'pk_test_xxxxxxxxxxxxxxxxxxxxx', 
-    email: auth.currentUser?.email || "customer@email.com",
+    key: 'pk_test_xxxxxxxxxxxxxxxxxxxxx', // 🔥 replace with your Paystack PUBLIC key
+    email: "customer@email.com", // later we'll use real user email
     amount: amount,
     currency: "ZAR",
-    callback: async function(response){
-      alert("Payment successful!");
 
-      sessionStorage.setItem("paid", "true");
+        callback: function(response){
+  alert("Payment successful!");
 
-      // ✅ Update Firestore subscription
-      if(auth.currentUser){
-        const userRef = doc(db, "users", auth.currentUser.uid);
-        await setDoc(userRef, { subscribed: true }, { merge: true });
-      }
+  sessionStorage.setItem("paid", "true");
 
-      showSection('login');  
-    },
+  showSection('login'); // send user to register/login
+},
+
     onClose: function(){
       alert("Payment window closed.");
     }
@@ -821,4 +813,4 @@ function payWithPaystack(){
 <script src="https://js.paystack.co/v1/inline.js"></script>
 
 </body>
-</html>                     
+</html>                       
