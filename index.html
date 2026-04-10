@@ -244,11 +244,12 @@ footer{
   <p>Adult Services Marketplace • All Genders • All Provinces</p>
 
   <nav>
-    <button onclick="showSection('market')">Home</button>
-    <button onclick="showSection('subscribe')">Subscribe</button>
-    <button onclick="showSection('events')">Events</button>
-    <button onclick="handleSellAccess()">Sell a Service</button> 
-  </nav>
+  <button onclick="showSection('market')">Home</button>
+  <button onclick="showSection('subscribe')">Subscribe</button>
+  <button onclick="showSection('events')">Events</button>
+  <button onclick="handleSellAccess()">Sell a Service</button> 
+  <button onclick="logout()">Logout</button> <!-- ✅ ADD THIS -->
+</nav>
   
 </header>
 
@@ -394,6 +395,7 @@ footer{
     <button class="btn">Contact on WhatsApp</button>
   </a>
 
+  <button class="btn" onclick="editService()">Edit</button>
   <button class="btn" onclick="showSection('market')">Back</button>
 </section>
 
@@ -437,32 +439,6 @@ from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
 const ADMIN_PASSWORD = "admin@123"; // choose your password
 
-// AUTO CREATE ADMIN
-onAuthStateChanged(auth, async (user) => {
-
-  if(!user){
-    try{
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        ADMIN_EMAIL,
-        ADMIN_PASSWORD
-      );
-
-      await setDoc(doc(db, "users", userCredential.user.uid), {
-        email: ADMIN_EMAIL,
-        subscribed: true,
-        role: "admin"
-      });
-
-      console.log("Admin auto-created");
-    } catch(err){
-      // If already exists, ignore error
-      console.log("Admin already exists");
-    }
-  }
-
-}); 
-
 // ===== FIXED REGISTER =====
 window.register = async function(){
 
@@ -503,9 +479,25 @@ window.login = async function(){
   try{
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
 
-    const docSnap = await getDoc(doc(db, "users", userCredential.user.uid));
+    const userRef = doc(db, "users", userCredential.user.uid);
+    const docSnap = await getDoc(userRef);
 
-    if(docSnap.exists() && (docSnap.data().subscribed || email === ADMIN_EMAIL)){
+    // ✅ IF ADMIN → FORCE ACCESS
+    if(email === ADMIN_EMAIL){
+      // ensure admin doc exists
+      await setDoc(userRef, {
+        email: ADMIN_EMAIL,
+        subscribed: true,
+        role: "admin"
+      }, { merge: true });
+
+      document.getElementById("loginMsg").innerText = "Admin login successful!";
+      showSection('sell');
+      return;
+    }
+
+    // ✅ NORMAL USERS
+    if(docSnap.exists() && docSnap.data().subscribed){
       document.getElementById("loginMsg").innerText = "Login successful!";
       showSection('sell');
     } else {
@@ -515,6 +507,17 @@ window.login = async function(){
   } catch(error){
     document.getElementById("loginMsg").innerText = error.message;
   }
+}
+
+//====log out=====
+
+import { signOut } 
+from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+window.logout = async function(){
+  await signOut(auth);
+  alert("Logged out!");
+  showSection('login');
 }
 
 //====Post service====
@@ -593,6 +596,8 @@ window.postService = async function(){
 //====view profile======
 window.viewProfile = function(service){
 
+  window.currentService = service;
+
   document.getElementById("profileImg").src = service.img;
   document.getElementById("profileName").innerText = service.name;
   document.getElementById("profileService").innerText = service.service;
@@ -623,6 +628,7 @@ grid.innerHTML = "";
 
   querySnapshot.forEach((docSnap)=>{
     const s = docSnap.data();
+s.id = docSnap.id; // 🔥 IMPORTANT
 
     grid.innerHTML += `
       <div class="card">
@@ -631,9 +637,26 @@ grid.innerHTML = "";
         <p>${s.service}</p>
         <p>${s.gender} • ${s.province}</p>
         <button class="btn" onclick='viewProfile(${JSON.stringify(s)})'>View Profile</button>
+        <button class="btn" onclick='deleteService("${s.id}")'>Delete</button>
       </div>
     `;
   });
+}
+
+//====edit profile====
+
+window.editService = function(){
+  const s = window.currentService;
+
+  document.getElementById("sellerName").value = s.name;
+  document.getElementById("sellerService").value = s.service;
+  document.getElementById("sellerProvince").value = s.province;
+  document.getElementById("sellerGender").value = s.gender;
+  document.getElementById("sellerAge").value = s.age || "";
+  document.getElementById("sellerBio").value = s.bio || "";
+  document.getElementById("sellerWhatsApp").value = s.whatsapp || "";
+
+  showSection('sell');
 }
 
 // ===== FIXED SELL ACCESS =====
@@ -672,6 +695,22 @@ window.handleSellAccess = async function(){
     showSection('login');
   }
 }
+
+import { deleteDoc } 
+from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+window.deleteService = async function(id){
+  if(!confirm("Delete this service?")) return;
+
+  try{
+    await deleteDoc(doc(db, "services", id));
+    alert("Deleted!");
+    loadServices();
+  }catch(err){
+    alert(err.message);
+  }
+}
+
 </script>
 
 <script>
@@ -813,4 +852,4 @@ function payWithPaystack(){
 <script src="https://js.paystack.co/v1/inline.js"></script>
 
 </body>
-</html>                       
+</html>
