@@ -248,7 +248,9 @@ footer{
   <button onclick="showSection('subscribe')">Subscribe</button>
   <button onclick="showSection('events')">Events</button>
   <button onclick="handleSellAccess()">Sell a Service</button> 
-  <button onclick="logout()">Logout</button> <!-- ✅ ADD THIS -->
+  <button id="logoutBtn" onclick="logout()" style="display:none;">
+  Logout
+</button>
 </nav>
   
 </header>
@@ -269,30 +271,50 @@ footer{
 <section id="market" class="active">
   <h2 class="glow">Browse Services</h2>
 
-  <div class="filters">
-    <select id="provinceFilter">
-      <option value="">All Provinces</option>
-      <option>Gauteng</option>
-      <option>Western Cape</option>
-      <option>Eastern Cape</option>
-      <option>KwaZulu-Natal</option>
-      <option>Limpopo</option>
-      <option>Mpumalanga</option>
-      <option>Free State</option>
-      <option>North West</option>
-      <option>Northern Cape</option>
-    </select>
+ <div class="filters">
 
-    <select id="genderFilter">
-      <option value="">All Preferences</option>
-      <option>Male</option>
-      <option>Female</option>
-      <option>Gay</option>
-      <option>Lesbian</option>
-      <option>Trans</option>
-      <option>Non-binary</option>
-    </select>
-  </div>
+  <!-- CATEGORY -->
+  <select id="categoryFilter">
+    <option value="">All Categories</option>
+    <option>Massage</option>
+    <option>Escort</option>
+    <option>All night</option>
+    <option>Specials</option>
+    <option>Adult Entertainment</option>
+    <option>Other</option>
+  </select>
+
+  <!-- PROVINCE -->
+  <select id="provinceFilter">
+    <option value="">All Provinces</option>
+    <option>Gauteng</option>
+    <option>Western Cape</option>
+    <option>Eastern Cape</option>
+    <option>KwaZulu-Natal</option>
+    <option>Limpopo</option>
+    <option>Mpumalanga</option>
+    <option>Free State</option>
+    <option>North West</option>
+    <option>Northern Cape</option>
+  </select>
+
+  <!-- CITY -->
+  <select id="cityFilter" style="display:none;">
+  <option value="">All Cities</option>
+</select>
+
+  <!-- PREFERENCE -->
+  <select id="genderFilter">
+    <option value="">All Preferences</option>
+    <option>Male</option>
+    <option>Female</option>
+    <option>Gay</option>
+    <option>Lesbian</option>
+    <option>Trans</option>
+    <option>Non-binary</option>
+  </select>
+
+</div>
 
   <div class="grid" id="serviceGrid"></div>
 </section>
@@ -354,6 +376,12 @@ footer{
       <option>North West</option>
       <option>Northern Cape</option>
   </select><br><br>
+  
+  <br><br>
+
+<select id="sellerCity" style="display:none;">
+  <option value="">Select City</option>
+</select>
 
   <select id="sellerGender">
     <option>Male</option>
@@ -363,6 +391,19 @@ footer{
     <option>Trans</option>
     <option>Non-binary</option>
   </select><br><br>
+  
+  <br><br>
+
+<select id="sellerCategory">
+  <option>Massage</option>
+  <option>Escort</option>
+  <option>Dance</option>
+  <option>Companionship</option>
+  <option>Fitness</option>
+  <option>Therapy</option>
+  <option>Adult Entertainment</option>
+  <option>Wellness</option>
+</select>
 
   <input type="file" id="sellerImage"><br><br>
 
@@ -408,7 +449,7 @@ footer{
   <button class="btn" onclick="payWithPaystack()">Pay Now</button>
 </section>
 
-<footer>
+<footer>                                     
   <p>Adults Only • Legal Services Marketplace</p>
 </footer>
 
@@ -492,6 +533,7 @@ window.login = async function(){
       }, { merge: true });
 
       document.getElementById("loginMsg").innerText = "Admin login successful!";
+	  document.getElementById("logoutBtn").style.display = "inline-block";
       showSection('sell');
       return;
     }
@@ -499,6 +541,7 @@ window.login = async function(){
     // ✅ NORMAL USERS
     if(docSnap.exists() && docSnap.data().subscribed){
       document.getElementById("loginMsg").innerText = "Login successful!";
+	  document.getElementById("logoutBtn").style.display = "inline-block";
       showSection('sell');
     } else {
       document.getElementById("loginMsg").innerText = "Not subscribed.";
@@ -528,7 +571,8 @@ window.postService = async function(){
 
   if(!user){
     document.getElementById("sellMsg").innerText = "You must be logged in.";
-    showSection('login');
+    document.getElementById("logoutBtn").style.display = "none";
+showSection('login');
     return;
   }
 
@@ -553,6 +597,8 @@ window.postService = async function(){
   const service = document.getElementById("sellerService").value;
   const province = document.getElementById("sellerProvince").value;
   const gender = document.getElementById("sellerGender").value;
+  const city = document.getElementById("sellerCity").value;
+  const category = document.getElementById("sellerCategory").value;
   const age = document.getElementById("sellerAge").value;
   const bio = document.getElementById("sellerBio").value;
   const whatsapp = document.getElementById("sellerWhatsApp").value;
@@ -575,6 +621,8 @@ window.postService = async function(){
         service,
         province,
         gender,
+		city,
+        category,
         age,
         bio,
         whatsapp,
@@ -635,7 +683,10 @@ s.id = docSnap.id; // 🔥 IMPORTANT
         <img src="${s.img}">
         <h3>${s.name}</h3>
         <p>${s.service}</p>
-        <p>${s.gender} • ${s.province}</p>
+        <p>
+  ${s.category || "General"}<br>
+  ${s.gender} • ${s.city || ""} • ${s.province}
+</p>
         <button class="btn" onclick='viewProfile(${JSON.stringify(s)})'>View Profile</button>
         <button class="btn" onclick='deleteService("${s.id}")'>Delete</button>
       </div>
@@ -714,47 +765,231 @@ window.deleteService = async function(id){
 </script>
 
 <script>
-const services=[
-  { 
+<script>
+
+const provinceCities = {
+
+  "Gauteng": [
+    "Johannesburg",
+    "Pretoria",
+    "Soweto",
+    "Sandton",
+    "Midrand"
+  ],
+
+  "Western Cape": [
+    "Cape Town",
+    "Stellenbosch",
+    "Paarl",
+    "George"
+  ],
+
+  "Eastern Cape": [
+    "Gqeberha",
+    "East London",
+    "Mthatha",
+    "Bhisho"
+  ],
+
+  "KwaZulu-Natal": [
+    "Durban",
+    "Pietermaritzburg",
+    "Richards Bay"
+  ],
+
+  "Limpopo": [
+    "Polokwane",
+    "Tzaneen",
+    "Thohoyandou"
+  ],
+
+  "Mpumalanga": [
+    "Mbombela",
+    "Emalahleni",
+    "Secunda"
+  ],
+
+  "Free State": [
+    "Bloemfontein",
+    "Welkom",
+    "Bethlehem"
+  ],
+
+  "North West": [
+    "Mahikeng",
+    "Rustenburg",
+    "Klerksdorp"
+  ],
+
+  "Northern Cape": [
+    "Kimberley",
+    "Upington",
+    "Kuruman"
+  ]
+
+};
+
+const provinceFilter = document.getElementById("provinceFilter");
+const cityFilter = document.getElementById("cityFilter");
+
+const sellerProvince = document.getElementById("sellerProvince");
+const sellerCity = document.getElementById("sellerCity");
+
+
+// ===== FILTER CITY LOGIC =====
+
+provinceFilter.addEventListener("change", () => {
+
+  const province = provinceFilter.value;
+
+  cityFilter.innerHTML =
+    `<option value="">All Cities</option>`;
+
+  // HIDE IF NO PROVINCE SELECTED
+  if(!province){
+    cityFilter.style.display = "none";
+    render();
+    return;
+  }
+
+  // SHOW CITY DROPDOWN
+  cityFilter.style.display = "inline-block";
+
+  if(provinceCities[province]){
+
+    provinceCities[province].forEach(city => {
+
+      cityFilter.innerHTML +=
+        `<option>${city}</option>`;
+
+    });
+
+  }
+
+  render();
+});
+
+
+// ===== SELLER CITY LOGIC =====
+
+sellerProvince.addEventListener("change", () => {
+
+  const province = sellerProvince.value;
+
+  sellerCity.innerHTML =
+    `<option value="">Select City</option>`;
+
+  // HIDE IF NO PROVINCE
+  if(!province){
+    sellerCity.style.display = "none";
+    return;
+  }
+
+  // SHOW DROPDOWN
+  sellerCity.style.display = "inline-block";
+
+  if(provinceCities[province]){
+
+    provinceCities[province].forEach(city => {
+
+      sellerCity.innerHTML +=
+        `<option>${city}</option>`;
+
+    });
+
+  }
+
+});
+
+</script>
+
+<script>
+
+const services = [
+
+  {
     name:"Alex",
     service:"Personal Trainer",
-     province:"Gauteng",
+    category:"Fitness",
+    province:"Gauteng",
+    city:"Johannesburg",
     gender:"Gay",
     img:"gay.jpeg"
   },
+
   {
     name:"Luna",
     service:"Dance Performer",
+    category:"Dance",
     province:"Western Cape",
+    city:"Cape Town",
     gender:"Lesbian",
     img:"female-les.jpeg"
   },
+
   {
     name:"Kai",
     service:"Massage Therapy",
+    category:"Massage",
     province:"KwaZulu-Natal",
+    city:"Durban",
     gender:"Non-binary",
     img:"female.jpeg"
   }
+
 ];
 
 const grid=document.getElementById("serviceGrid");
 
 function render(){
-  const p=document.getElementById("provinceFilter").value;
-  const g=document.getElementById("genderFilter").value;
-  grid.innerHTML="";
-  services.filter(s=>(!p||s.province===p)&&(!g||s.gender===g))
-  .forEach(s=>{
-    grid.innerHTML+=`
+
+  const p = document.getElementById("provinceFilter").value;
+  const c = document.getElementById("cityFilter").value;
+  const g = document.getElementById("genderFilter").value;
+  const cat = document.getElementById("categoryFilter").value;
+
+  grid.innerHTML = "";
+
+  services
+  .filter(s =>
+
+    (!p || s.province === p) &&
+    (!c || s.city === c) &&
+    (!g || s.gender === g) &&
+    (!cat || s.category === cat)
+
+  )
+
+  .forEach(s => {
+
+    grid.innerHTML += `
+
     <div class="card">
+
       <img src="${s.img}">
+
       <h3>${s.name}</h3>
+
       <p>${s.service}</p>
-      <p>${s.gender} • ${s.province}</p>
-      <button class="btn">View Profile</button>
-    </div>`;
+
+      <p>${s.category || "General"}</p>
+
+      <p>
+        ${s.gender} •
+        ${s.city || ""} •
+        ${s.province}
+      </p>
+
+      <button class="btn">
+        View Profile
+      </button>
+
+    </div>
+
+    `;
+
   });
+
 }
 
 document.querySelectorAll("select").forEach(s=>s.onchange=render);
