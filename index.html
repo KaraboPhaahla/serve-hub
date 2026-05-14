@@ -216,10 +216,267 @@ footer{
   padding:30px;
   opacity:0.7;
 }
+
+#menuBtn{
+
+  position:fixed;
+  top:15px;
+  left:15px;
+
+  width:50px;
+  height:50px;
+
+  z-index:10001;
+
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  gap:6px;
+
+  padding:12px;
+
+  cursor:pointer;
+
+  border-radius:16px;
+
+  backdrop-filter:blur(12px);
+
+  background:rgba(15,0,30,0.6);
+
+  border:1px solid rgba(255,255,255,0.15);
+
+  box-shadow:
+    0 0 15px rgba(255,47,164,0.3),
+    0 0 30px rgba(143,43,255,0.2);
+
+  transition:0.3s;
+}
+
+#menuBtn:hover{
+  transform:scale(1.05);
+}
+
+#menuBtn span{
+
+  width:100%;
+  height:3px;
+
+  border-radius:10px;
+
+  background:white;
+
+  transition:0.3s;
+}
+
+#menuOverlay{
+
+  position:fixed;
+  inset:0;
+
+  background:rgba(0,0,0,0.45);
+
+  backdrop-filter:blur(4px);
+
+  opacity:0;
+  visibility:hidden;
+
+  transition:0.4s;
+
+  z-index:9998;
+}
+
+#menuOverlay.active{
+  opacity:1;
+  visibility:visible;
+}
+
+#sideMenu{
+
+  position:fixed;
+
+  top:0;
+  left:-320px;
+
+  width:300px;
+  max-width:85vw;
+
+  height:100vh;
+
+  z-index:10000;
+
+  padding:25px;
+
+  display:flex;
+  flex-direction:column;
+
+  background:rgba(10,0,20,0.78);
+
+  backdrop-filter:blur(18px);
+
+  border-right:1px solid rgba(255,255,255,0.08);
+
+  box-shadow:
+    0 0 40px rgba(0,0,0,0.5);
+
+  transition:0.45s cubic-bezier(.77,0,.18,1);
+}
+
+#sideMenu.active{
+  left:0;
+}
+
+.menuHeader{
+
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+
+  margin-bottom:35px;
+}
+
+.menuHeader h2{
+
+  margin:0;
+
+  color:white;
+
+  text-shadow:
+    0 0 10px var(--pink),
+    0 0 20px var(--purple);
+}
+
+#closeMenu{
+
+  background:none;
+  border:none;
+
+  color:white;
+
+  font-size:26px;
+
+  cursor:pointer;
+}
+
+.menuButtons{
+
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+}
+
+.menuButtons button{
+
+  background:rgba(255,255,255,0.05);
+
+  border:1px solid rgba(255,255,255,0.08);
+
+  color:white;
+
+  padding:16px;
+
+  border-radius:16px;
+
+  font-size:15px;
+
+  text-align:left;
+
+  cursor:pointer;
+
+  transition:0.3s;
+}
+
+.menuButtons button:hover{
+
+  transform:translateX(5px);
+
+  background:linear-gradient(
+    90deg,
+    rgba(255,47,164,0.25),
+    rgba(143,43,255,0.2)
+  );
+
+  box-shadow:
+    0 0 15px rgba(255,47,164,0.3);
+}
+
+@media(max-width:600px){
+
+  #sideMenu{
+    width:85vw;
+  }
+
+  .menuButtons button{
+    font-size:14px;
+    padding:14px;
+  }
+}
+
+
 </style>
 </head>
 
 <body>
+
+<div id="menuBtn">
+  <span></span>
+  <span></span>
+  <span></span>
+</div>
+
+<div id="menuOverlay"></div>
+
+<div id="sideMenu">
+
+  <div class="menuHeader">
+
+    <h2>SERVE-HUB</h2>
+
+    <button id="closeMenu">✕</button>
+
+  </div>
+
+  <div class="menuButtons">
+
+    <button onclick="showSection('market')">
+      🏠 Home
+    </button>
+
+    <button onclick="showSection('subscribe')">
+      💎 Subscribe
+    </button>
+
+    <button onclick="showSection('events')">
+      🎉 Events
+    </button>
+
+    <button onclick="showSpecials()">
+      🔥 Specials
+    </button>
+
+    <button onclick="handleSellAccess()">
+      🛍 Sell Service
+    </button>
+
+    <button onclick="showCitiesMenu()">
+      📍 Cities
+    </button>
+
+    <button
+      id="menuLoginBtn"
+      onclick="handleMenuAuth()">
+      🔐 Login
+    </button>
+
+    <button
+      id="menuLogoutBtn"
+      onclick="logout()"
+      style="display:none;">
+      🚪 Logout
+    </button>
+
+  </div>
+
+</div>
 
 <header>
 
@@ -358,6 +615,15 @@ footer{
   </div>
 </section>
 
+<!-- ===== specials ===== -->
+<section id="specials">
+
+  <h2 class="glow">Special Offers</h2>
+
+  <div class="grid" id="specialGrid"></div>
+
+</section>
+
 <!-- ===== SELL ===== -->
 <section id="sell">
   <h2 class="glow">Post Your Service</h2>
@@ -404,6 +670,15 @@ footer{
   <option>Adult Entertainment</option>
   <option>Wellness</option>
 </select>
+
+<select id="sellerSpecial">
+  <option value="">No Special</option>
+  <option>Discount Available</option>
+  <option>2 For 1</option>
+  <option>Weekend Special</option>
+  <option>VIP Package</option>
+  <option>Limited Time Offer</option>
+</select><br><br>
 
   <input type="file" id="sellerImage"><br><br>
 
@@ -474,6 +749,8 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+
+window.auth = auth;
 
 import { onAuthStateChanged } 
 from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
@@ -568,6 +845,7 @@ window.logout = async function(){
 window.postService = async function(){
 
   const user = auth.currentUser;
+  
 
   if(!user){
     document.getElementById("sellMsg").innerText = "You must be logged in.";
@@ -609,6 +887,18 @@ showSection('login');
     document.getElementById("sellMsg").innerText = "Please upload an image.";
     return;
   }
+  
+   if(!/^27\d{9}$/.test(whatsapp)){
+  document.getElementById("sellMsg").innerText =
+    "Enter valid WhatsApp number. Example: 27831234567";
+  return;
+}
+
+if(!city){
+  document.getElementById("sellMsg").innerText =
+    "Please select a city.";
+  return;
+}
 
   const reader = new FileReader();
 
@@ -616,18 +906,28 @@ showSection('login');
     const base64Image = reader.result;
 
     try{
-      await setDoc(doc(db, "services", Date.now().toString()), {
-        name,
-        service,
-        province,
-        gender,
-		city,
-        category,
-        age,
-        bio,
-        whatsapp,
-        img: base64Image
-      });
+      
+	  const special =
+document.getElementById("sellerSpecial").value;
+	  
+const serviceId = window.editingServiceId || Date.now().toString();
+
+await setDoc(doc(db, "services", serviceId), {
+  id: serviceId,
+  ownerId: user.uid,
+  name,
+  service,
+  province,
+  city,
+  gender,
+  category,
+  special,
+  age,
+  bio,
+  whatsapp,
+  img: base64Image,
+  createdAt: Date.now()
+});
 
       document.getElementById("sellMsg").innerText = "Service posted!";
       loadServices();
@@ -639,8 +939,10 @@ showSection('login');
   }
 
   reader.readAsDataURL(file);
+ 
 }
 
+window.editingServiceId = null;
 //====view profile======
 window.viewProfile = function(service){
 
@@ -651,7 +953,13 @@ window.viewProfile = function(service){
   document.getElementById("profileService").innerText = service.service;
 
   document.getElementById("profileDetails").innerText =
-    service.gender + " • " + service.province;
+    service.gender +
+" • " +
+service.city +
+" • " +
+service.province +
+" • " +
+service.category;
 
   document.getElementById("profileAge").innerText =
     "Age: " + (service.age || "N/A");
@@ -663,51 +971,134 @@ window.viewProfile = function(service){
   const whatsappLink = "https://wa.me/" + service.whatsapp;
   document.getElementById("whatsappBtn").href = whatsappLink;
 
-  showSection('profile');
+  const user = auth.currentUser;
+
+const editBtn =
+document.querySelector("#profile .btn");
+
+if(
+  user &&
+  (
+    service.ownerId === user.uid ||
+    user.email === ADMIN_EMAIL
+  )
+){
+  editBtn.style.display = "inline-block";
+}else{
+  editBtn.style.display = "none";
+}
+
+showSection('profile');
 } 
 
 //=====LoadServices=====
 
 window.loadServices = async function(){
+
   const grid = document.getElementById("serviceGrid");
-grid.innerHTML = "";
+
+  grid.innerHTML = "";
+
+  const province = document.getElementById("provinceFilter").value;
+  const city = document.getElementById("cityFilter").value;
+  const gender = document.getElementById("genderFilter").value;
+  const category = document.getElementById("categoryFilter").value;
 
   const querySnapshot = await getDocs(collection(db, "services"));
 
   querySnapshot.forEach((docSnap)=>{
+
     const s = docSnap.data();
-s.id = docSnap.id; // 🔥 IMPORTANT
+
+    // FILTERING
+    if(province && s.province !== province) return;
+    if(city && s.city !== city) return;
+    if(gender && s.gender !== gender) return;
+    if(category && s.category !== category) return;
+
+    const user = auth.currentUser;
+
+    const canManage =
+      user &&
+      (
+        s.ownerId === user.uid ||
+        user.email === ADMIN_EMAIL
+      );
 
     grid.innerHTML += `
       <div class="card">
+
         <img src="${s.img}">
+
         <h3>${s.name}</h3>
+
         <p>${s.service}</p>
+
         <p>
-  ${s.category || "General"}<br>
-  ${s.gender} • ${s.city || ""} • ${s.province}
-</p>
-        <button class="btn" onclick='viewProfile(${JSON.stringify(s)})'>View Profile</button>
-        <button class="btn" onclick='deleteService("${s.id}")'>Delete</button>
+          ${s.category}<br>
+          ${s.gender} • ${s.city} • ${s.province}
+        </p>
+
+        <button class="btn"
+          onclick='viewProfile(${JSON.stringify(s)})'>
+          View Profile
+        </button>
+
+        ${
+          canManage
+          ?
+          `
+          <button class="btn"
+            onclick='deleteService("${s.id}")'>
+            Delete
+          </button>
+          `
+          :
+          ""
+        }
+
       </div>
     `;
   });
 }
 
+document.querySelectorAll("select").forEach(el=>{
+  el.addEventListener("change", loadServices);
+});
+
 //====edit profile====
 
-window.editService = function(){
+window.editService = async function(){
+
+  const user = auth.currentUser;
+
+  if(!user){
+    alert("Login required.");
+    return;
+  }
+
   const s = window.currentService;
+
+  if(
+    s.ownerId !== user.uid &&
+    user.email !== ADMIN_EMAIL
+  ){
+    alert("You can only edit your own profile.");
+    return;
+  }
 
   document.getElementById("sellerName").value = s.name;
   document.getElementById("sellerService").value = s.service;
   document.getElementById("sellerProvince").value = s.province;
   document.getElementById("sellerGender").value = s.gender;
+  document.getElementById("sellerCategory").value = s.category;
   document.getElementById("sellerAge").value = s.age || "";
   document.getElementById("sellerBio").value = s.bio || "";
   document.getElementById("sellerWhatsApp").value = s.whatsapp || "";
 
   showSection('sell');
+
+  window.editingServiceId = s.id;
 }
 
 // ===== FIXED SELL ACCESS =====
@@ -751,20 +1142,159 @@ import { deleteDoc }
 from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 window.deleteService = async function(id){
-  if(!confirm("Delete this service?")) return;
+
+  const user = auth.currentUser;
+
+  if(!user){
+    alert("Login required.");
+    return;
+  }
 
   try{
-    await deleteDoc(doc(db, "services", id));
-    alert("Deleted!");
+
+    const serviceRef = doc(db, "services", id);
+    const serviceSnap = await getDoc(serviceRef);
+
+    if(!serviceSnap.exists()){
+      alert("Service not found.");
+      return;
+    }
+
+    const serviceData = serviceSnap.data();
+
+    // OWNER OR ADMIN ONLY
+    if(
+      serviceData.ownerId !== user.uid &&
+      user.email !== ADMIN_EMAIL
+    ){
+      alert("You can only delete your own profile.");
+      return;
+    }
+
+    if(!confirm("Delete this profile?")) return;
+
+    await deleteDoc(serviceRef);
+
+    alert("Profile deleted.");
     loadServices();
+
   }catch(err){
     alert(err.message);
   }
 }
 
+const menuBtn = document.getElementById("menuBtn");
+const sideMenu = document.getElementById("sideMenu");
+const closeMenu = document.getElementById("closeMenu");
+const menuOverlay = document.getElementById("menuOverlay");
+
+function openMenu(){
+
+  sideMenu.classList.add("active");
+  menuOverlay.classList.add("active");
+
+}
+
+function closeSideMenu(){
+
+  sideMenu.classList.remove("active");
+  menuOverlay.classList.remove("active");
+
+}
+
+menuBtn.addEventListener("click", openMenu);
+
+closeMenu.addEventListener("click", closeSideMenu);
+
+menuOverlay.addEventListener("click", closeSideMenu);
+
+sideMenu.querySelectorAll("button").forEach(btn=>{
+
+  btn.addEventListener("click", ()=>{
+
+    if(btn.id !== "menuLogoutBtn"){
+      closeSideMenu();
+    }
+
+  });
+
+});
+
+function updateMenuAuth(){
+
+  const user = auth.currentUser;
+
+  const loginBtn =
+    document.getElementById("menuLoginBtn");
+
+  const logoutBtn =
+    document.getElementById("menuLogoutBtn");
+
+  if(user){
+
+    loginBtn.style.display = "none";
+    logoutBtn.style.display = "block";
+
+  }else{
+
+    loginBtn.style.display = "block";
+    logoutBtn.style.display = "none";
+  }
+}
+
+window.handleMenuAuth = async function(){
+
+  const user = auth.currentUser;
+
+  if(user){
+    showSection("market");
+    return;
+  }
+
+  const paid = sessionStorage.getItem("paid");
+
+  if(paid === "true"){
+    showSection("login");
+  }else{
+    showSection("subscribe");
+  }
+}
+
+onAuthStateChanged(auth, ()=>{
+
+  updateMenuAuth();
+
+});
+
+window.showCitiesMenu = function(){
+
+  alert(`
+Gauteng:
+Johannesburg
+Pretoria
+Soweto
+
+Western Cape:
+Cape Town
+Stellenbosch
+
+KwaZulu-Natal:
+Durban
+Pietermaritzburg
+  `);
+
+}
+
+window.addEventListener("DOMContentLoaded", ()=>{
+
+  loadServices();
+
+});
+
+
+
 </script>
 
-<script>
 <script>
 
 const provinceCities = {
@@ -848,7 +1378,6 @@ provinceFilter.addEventListener("change", () => {
   // HIDE IF NO PROVINCE SELECTED
   if(!province){
     cityFilter.style.display = "none";
-    render();
     return;
   }
 
@@ -866,7 +1395,6 @@ provinceFilter.addEventListener("change", () => {
 
   }
 
-  render();
 });
 
 
@@ -901,99 +1429,11 @@ sellerProvince.addEventListener("change", () => {
 
 });
 
+sellerProvince.dispatchEvent(new Event("change"));
+
 </script>
 
 <script>
-
-const services = [
-
-  {
-    name:"Alex",
-    service:"Personal Trainer",
-    category:"Fitness",
-    province:"Gauteng",
-    city:"Johannesburg",
-    gender:"Gay",
-    img:"gay.jpeg"
-  },
-
-  {
-    name:"Luna",
-    service:"Dance Performer",
-    category:"Dance",
-    province:"Western Cape",
-    city:"Cape Town",
-    gender:"Lesbian",
-    img:"female-les.jpeg"
-  },
-
-  {
-    name:"Kai",
-    service:"Massage Therapy",
-    category:"Massage",
-    province:"KwaZulu-Natal",
-    city:"Durban",
-    gender:"Non-binary",
-    img:"female.jpeg"
-  }
-
-];
-
-const grid=document.getElementById("serviceGrid");
-
-function render(){
-
-  const p = document.getElementById("provinceFilter").value;
-  const c = document.getElementById("cityFilter").value;
-  const g = document.getElementById("genderFilter").value;
-  const cat = document.getElementById("categoryFilter").value;
-
-  grid.innerHTML = "";
-
-  services
-  .filter(s =>
-
-    (!p || s.province === p) &&
-    (!c || s.city === c) &&
-    (!g || s.gender === g) &&
-    (!cat || s.category === cat)
-
-  )
-
-  .forEach(s => {
-
-    grid.innerHTML += `
-
-    <div class="card">
-
-      <img src="${s.img}">
-
-      <h3>${s.name}</h3>
-
-      <p>${s.service}</p>
-
-      <p>${s.category || "General"}</p>
-
-      <p>
-        ${s.gender} •
-        ${s.city || ""} •
-        ${s.province}
-      </p>
-
-      <button class="btn">
-        View Profile
-      </button>
-
-    </div>
-
-    `;
-
-  });
-
-}
-
-document.querySelectorAll("select").forEach(s=>s.onchange=render);
-loadServices() ;
 
 function showSection(id){
   document.querySelectorAll("section").forEach(s=>s.classList.remove("active"));
@@ -1004,16 +1444,26 @@ function showSection(id){
 <script>
 let bgVisible = true;
 
-document.addEventListener("click", () => {
+document.querySelector("header").addEventListener("click", (e) => {
+
+  // prevent menu clicks from triggering background
+  if(
+    e.target.closest("#menuBtn") ||
+    e.target.closest("#sideMenu")
+  ){
+    return;
+  }
+
   const bg = document.querySelector(".header-bg");
 
   if(bgVisible){
-    bg.style.opacity = "0";   // hide
+    bg.style.opacity = "0";
   } else {
-    bg.style.opacity = "1";   // show
+    bg.style.opacity = "1";
   }
 
   bgVisible = !bgVisible;
+
 }); 
 </script>
 
@@ -1081,6 +1531,49 @@ function payWithPaystack(){
   });
 
   handler.openIframe();
+}
+
+window.showSpecials = async function(){
+
+  showSection("specials");
+
+  const grid =
+    document.getElementById("specialGrid");
+
+  grid.innerHTML = "";
+
+  const querySnapshot =
+    await getDocs(collection(db, "services"));
+
+  querySnapshot.forEach(docSnap=>{
+
+    const s = docSnap.data();
+
+    if(!s.special) return;
+
+    grid.innerHTML += `
+
+      <div class="card">
+
+        <img src="${s.img}">
+
+        <h3>${s.name}</h3>
+
+        <p>${s.service}</p>
+
+        <h4 style="color:#ff2fa4;">
+          🔥 ${s.special}
+        </h4>
+
+        <button class="btn"
+          onclick='viewProfile(${JSON.stringify(s)})'>
+          View Profile
+        </button>
+
+      </div>
+
+    `;
+  });
 }
 </script>
 
