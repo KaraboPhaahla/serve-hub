@@ -711,7 +711,12 @@ footer{
     <button class="btn">Contact on WhatsApp</button>
   </a>
 
-  <button class="btn" onclick="editService()">Edit</button>
+  <button
+    id="editProfileBtn"
+    class="btn"
+    onclick="editService()">
+    Edit
+</button>
   <button class="btn" onclick="showSection('market')">Back</button>
 </section>
 
@@ -974,7 +979,7 @@ service.category;
   const user = auth.currentUser;
 
 const editBtn =
-document.querySelector("#profile .btn");
+document.getElementById("editProfileBtn");
 
 if(
   user &&
