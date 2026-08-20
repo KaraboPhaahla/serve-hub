@@ -722,11 +722,15 @@ footer{
 
 
 <section id="payment">
-  <h2 class="glow">Complete Payment</h2>
 
-  <p id="planText"></p>
+<h2 class="glow">
+Complete Payment
+</h2>
 
-  <button class="btn" onclick="payWithPaystack()">Pay Now</button>
+<p id="planText"></p>
+
+<div id="paypal-button-container"></div>
+
 </section>
 
 <footer>                                     
@@ -755,14 +759,84 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
+
+// Make Firebase available globally
 window.auth = auth;
+window.db = db;
+window.getDocs = getDocs;
+window.collection = collection;
+window.doc = doc;
+window.getDoc = getDoc;
+window.setDoc = setDoc;
+window.deleteDoc = deleteDoc;
 
 import { onAuthStateChanged } 
 from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
 const ADMIN_PASSWORD = "admin@123"; // choose your password
 
+// ===== load specials =====
+
+window.loadSpecials = async function(){
+
+    const grid = document.getElementById("specialGrid");
+
+    grid.innerHTML = "";
+
+
+    const querySnapshot = await getDocs(
+        collection(db,"services")
+    );
+
+
+    querySnapshot.forEach((docSnap)=>{
+
+        const s = docSnap.data();
+
+
+        if(!s.special){
+            return;
+        }
+
+
+        grid.innerHTML += `
+
+        <div class="card">
+
+            <img src="${s.img}">
+
+            <h3>${s.name}</h3>
+
+            <p>${s.service}</p>
+
+            <p>
+            🔥 ${s.special}
+            </p>
+
+            <p>
+            ${s.city} • ${s.province}
+            </p>
+
+
+            <button class="btn"
+            onclick='viewProfile(${JSON.stringify(s)})'>
+            View Special
+            </button>
+
+
+        </div>
+
+        `;
+
+
+    });
+
+}
+
+
+
 // ===== FIXED REGISTER =====
+
 window.register = async function(){
 
   const email = document.getElementById("email").value;
@@ -1487,102 +1561,182 @@ function goHome(){
 <script>
 
 function subscribe(plan){
-  localStorage.setItem("selectedPlan", plan);
 
-  // Show payment section instead of redirect
-  showSection('payment');
+    localStorage.setItem(
+        "selectedPlan",
+        plan
+    );
 
-  // Display selected plan
-  const planText = document.getElementById("planText");
 
-  if(plan === "monthly"){
-    planText.innerText = "Monthly Plan - R199";
-  } else {
-    planText.innerText = "Yearly Plan - R1999";
-  }
+    showSection("payment");
+
+
+    const planText =
+    document.getElementById("planText");
+
+
+    if(plan === "monthly"){
+
+        planText.innerText =
+        "Monthly Plan - R199";
+
+    }else{
+
+        planText.innerText =
+        "Yearly Plan - R1999";
+
+    }
+
+
+    renderPayPalButton();
+
 }
 
+</script>
+
+<!-- PayPal SDK FIRST -->
+<!-- PayPal SDK FIRST -->
+<script src="https://www.paypal.com/sdk/js?client-id=sb&currency=ZAR"></script>
+
+<!-- The client-id=sb value is only for testing. 
+Before going live, replace it with your actual
+ PayPal Client ID from your PayPal Developer account. -->
+
+
+<script>
+
+function renderPayPalButton(){
+
+
+    const container =
+    document.getElementById(
+        "paypal-button-container"
+    );
+
+
+    // prevent duplicate buttons
+    container.innerHTML = "";
+
+
+    const selectedPlan =
+    localStorage.getItem(
+        "selectedPlan"
+    );
+
+
+    let amount = "199.00";
+
+
+    if(selectedPlan === "yearly"){
+
+        amount = "1999.00";
+
+    }
+
+
+
+    paypal.Buttons({
+
+
+        createOrder:function(data,actions){
+
+
+            return actions.order.create({
+
+                purchase_units:[{
+
+                    amount:{
+
+                        currency_code:"ZAR",
+
+                        value:amount
+
+                    }
+
+                }]
+
+            });
+
+
+        },
+
+
+
+        onApprove:function(data,actions){
+
+
+            return actions.order.capture()
+
+            .then(function(details){
+
+
+                console.log(
+                    "Payment successful:",
+                    details
+                );
+
+
+                sessionStorage.setItem(
+                    "paid",
+                    "true"
+                );
+
+
+                showSection("login");
+
+
+            });
+
+
+        },
+
+
+        onCancel:function(){
+
+
+            alert(
+                "Payment cancelled"
+            );
+
+
+        },
+
+
+        onError:function(error){
+
+
+            console.error(error);
+
+
+            alert(
+                "Payment failed"
+            );
+
+
+        }
+
+
+    }).render(
+        "#paypal-button-container"
+    );
+
+
+}
 </script>
 
 <script>
-function payWithPaystack(){
-  const plan = localStorage.getItem("selectedPlan");
 
-  let amount = 0;
+window.showSpecials = function(){
 
-  if(plan === "monthly"){
-    amount = 19900; // Paystack uses cents (R199 = 19900)
-  } else {
-    amount = 199900; // R1999
-  }
+    showSection("specials");
 
-  let handler = PaystackPop.setup({
-    key: 'pk_test_xxxxxxxxxxxxxxxxxxxxx', // 🔥 replace with your Paystack PUBLIC key
-    email: "customer@email.com", // later we'll use real user email
-    amount: amount,
-    currency: "ZAR",
-
-        callback: function(response){
-  alert("Payment successful!");
-
-  sessionStorage.setItem("paid", "true");
-
-  showSection('login'); // send user to register/login
-},
-
-    onClose: function(){
-      alert("Payment window closed.");
+    if(window.loadSpecials){
+        loadSpecials();
     }
-  });
 
-  handler.openIframe();
 }
 
-window.showSpecials = async function(){
-
-  showSection("specials");
-
-  const grid =
-    document.getElementById("specialGrid");
-
-  grid.innerHTML = "";
-
-  const querySnapshot =
-    await getDocs(collection(db, "services"));
-
-  querySnapshot.forEach(docSnap=>{
-
-    const s = docSnap.data();
-
-    if(!s.special) return;
-
-    grid.innerHTML += `
-
-      <div class="card">
-
-        <img src="${s.img}">
-
-        <h3>${s.name}</h3>
-
-        <p>${s.service}</p>
-
-        <h4 style="color:#ff2fa4;">
-          🔥 ${s.special}
-        </h4>
-
-        <button class="btn"
-          onclick='viewProfile(${JSON.stringify(s)})'>
-          View Profile
-        </button>
-
-      </div>
-
-    `;
-  });
-}
 </script>
-
-<script src="https://js.paystack.co/v1/inline.js"></script>
 
 </body>
 </html>
